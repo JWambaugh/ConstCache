@@ -31,8 +31,8 @@ mmCache::mmCache(std::string fileName, int buffSize){
 	    map = (char*)mmap(0, bufferSize, PROT_READ, MAP_SHARED, filePointer, 0);
 		if (map == MAP_FAILED) {
 			close(filePointer);
-			perror("Error mapping the file");
-			exit(EXIT_FAILURE);
+
+			throw 0;
 		}
 		//cache is NOT writable if already existing.
 		writable=false;
@@ -43,6 +43,7 @@ mmCache::mmCache(std::string fileName, int buffSize){
 	//std::cout<<"end constructor\n";
 	setupPointers();
 	//std::cout<<"end constructor\n";
+
 }
 
 mmCache::~mmCache(){
@@ -68,14 +69,15 @@ void mmCache::setupPointers(){
 }
 
 int mmCache::set(std::string key, std::string value){
-	if(!writable)return -1;
+	if(!writable)throw 2;
 	mmCacheEntry *e = new mmCacheEntry(key,value);
+	//std::cout<<"adding "<<key<<"->"<<value;
 	entries.push_back(e);
 	return 1;
 }
 
 void mmCache::prepareForWrite(){
-	if(!writable)return;
+	if(!writable) throw 2;
 	//std::cout<<"begin prepare";
 	writable=true;
 	readable=false;
@@ -85,8 +87,8 @@ void mmCache::prepareForWrite(){
  * saves the entries and makes cache readable
  */
 void mmCache::complete(){
-	if(entries.size()<1)return;
-	if(!writable)return;
+	if(entries.size()<1)throw 3;
+	if(!writable)throw 2;
 	writable=false;
 	readable=true;
 
@@ -102,7 +104,6 @@ void mmCache::complete(){
 	}
 
 	//write to memory here
-	std::cout<<"begin writing\n";
 	unsigned int entryCount=0;
 	char* entryPos=0;
 	unsigned int indexCount=0;
@@ -202,14 +203,13 @@ void mmCache::setupFile(){
 	//std::cout<<"optening "<<this->fileName;
 	this->filePointer = open(this->fileName.c_str(),O_RDWR | O_CREAT | O_TRUNC );
 	if(filePointer == -1){
-		puts("\nError opening the file");
+		throw 1;
 	}
 
 	result = lseek(filePointer, bufferSize-1, SEEK_SET);
 	if (result == -1) {
 		close(filePointer);
-		perror("Error calling lseek() to 'stretch' the file");
-		exit(EXIT_FAILURE);
+		throw 1;
 	}
 	//puts("here");
 
@@ -226,8 +226,7 @@ void mmCache::setupFile(){
 	result = write(filePointer, "", 1);
 	if (result != 1) {
 		close(filePointer);
-		perror("Error writing last byte of the file");
-		exit(EXIT_FAILURE);
+		throw 1;
 	}
 
 	//puts("here");
@@ -235,8 +234,7 @@ void mmCache::setupFile(){
 	 map =(char*) mmap(0, bufferSize, PROT_READ | PROT_WRITE, MAP_SHARED, filePointer, 0);
 	    if (map == MAP_FAILED) {
 		close(filePointer);
-		perror("Error mmapping the file");
-		exit(EXIT_FAILURE);
+		throw 1;
 	    }
 
 	//puts("here");

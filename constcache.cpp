@@ -3,6 +3,7 @@
 extern "C" {
 #include <ext/standard/php_var.h>
 #include "ext/standard/php_smart_str.h"
+#include "zend_exceptions.h"
 }
 zend_class_entry *constcache_ce;
 zend_object_handlers cache_object_handlers;
@@ -68,17 +69,31 @@ PHP_METHOD(ConstCache, __construct){
 	//php_printf("\ncacheName: %s\n",cacheName,cacheNameLen);
 	std::string cname(cacheName,(size_t)cacheNameLen);
 	//php_printf("\ncacheName: %s -----%s\n",cacheName,cacheNameLen,cname.c_str(),cname.length());
-	mmCache *c = new mmCache(cname,buffSize);
-	cache_object *obj = (cache_object *)zend_object_store_get_object(object TSRMLS_CC);
-	obj->cache = c;
+	try{
+		mmCache *c = new mmCache(cname,buffSize);
+		cache_object *obj = (cache_object *)zend_object_store_get_object(object TSRMLS_CC);
+		obj->cache = c;
+	}catch(int e){
+		if(e==1)
+			zend_throw_exception(zend_exception_get_default(TSRMLS_C), "Error mapping to cache file", 0 TSRMLS_CC);
+		else zend_throw_exception(zend_exception_get_default(TSRMLS_C), "Unknown Error", 0 TSRMLS_CC);
+
+	}
+
 }
 
 
 
 PHP_METHOD(ConstCache, prepareForWrite){
-	zval *me = getThis();
-	cache_object *obj = (cache_object *)zend_object_store_get_object(me TSRMLS_CC);
-	obj->cache->prepareForWrite();
+	try{
+		zval *me = getThis();
+		cache_object *obj = (cache_object *)zend_object_store_get_object(me TSRMLS_CC);
+		obj->cache->prepareForWrite();
+	}catch(int e){
+		if(e==2)
+			zend_throw_exception(zend_exception_get_default(TSRMLS_C), "Cache not in a writable state", 0 TSRMLS_CC);
+		else zend_throw_exception(zend_exception_get_default(TSRMLS_C), "Unknown Error", 0 TSRMLS_CC);
+	}
 }
 
 PHP_METHOD(ConstCache, set){
@@ -86,28 +101,63 @@ PHP_METHOD(ConstCache, set){
 	cache_object *obj = (cache_object *)zend_object_store_get_object(me TSRMLS_CC);
 	mmCache *c=obj->cache;
 
-	smart_str buff={0};
+	std::string buff;
 	php_serialize_data_t var_hash;
 	char *key;
 	zval *value;
 	int keyLen;
+	char dataType; //Datatype is stored as first byte. This lets us know if serialization/unserialization is required.
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz", &key, &keyLen, &value) == FAILURE) {
 			RETURN_NULL();
 		}
-	PHP_VAR_SERIALIZE_INIT(var_hash);
-	php_var_serialize(&buff, &value, &var_hash TSRMLS_CC);
-	PHP_VAR_SERIALIZE_DESTROY(var_hash);
-	c->set(std::string(key,(size_t)keyLen),std::string(buff.c,(size_t)buff.len));
-	smart_str_free(&buff);
+
+
+	//determine data type
+	if(Z_TYPE_P(value) == IS_STRING ){
+		dataType='s'; //string data type, stored as raw.
+
+		buff.append(1,dataType);
+		buff.append(Z_STRVAL_P(value), Z_STRLEN_P(value));
+	}else{
+		dataType = 'c'; //complex data type
+		PHP_VAR_SERIALIZE_INIT(var_hash);
+		smart_str buff2={0};
+		php_var_serialize(&buff2, &value, &var_hash TSRMLS_CC);
+		buff.append(1,dataType);
+		buff.append(buff2.c,buff2.len);
+
+		smart_str_free(&buff2);
+		PHP_VAR_SERIALIZE_DESTROY(var_hash);
+	}
+	try{
+		c->set(std::string(key,(size_t)keyLen),buff);
+	}catch(int e){
+		if(e==2)
+			zend_throw_exception(zend_exception_get_default(TSRMLS_C), "Cache not in a writable state", 0 TSRMLS_CC);
+		else zend_throw_exception(zend_exception_get_default(TSRMLS_C), "Unknown Error", 0 TSRMLS_CC);
+
+	}
+
 }
 
 
 PHP_METHOD(ConstCache, finalize){
 	zval *me = getThis();
 	cache_object *obj = (cache_object *)zend_object_store_get_object(me TSRMLS_CC);
+
 	mmCache *c=obj->cache;
-	c->complete();
+
+	try{
+		c->complete();
+	}catch(int e){
+		if(e==2)
+			zend_throw_exception(zend_exception_get_default(TSRMLS_C), "Cache not in a writable state", 0 TSRMLS_CC);
+		if(e==3)
+					zend_throw_exception(zend_exception_get_default(TSRMLS_C), "Nothing to write", 0 TSRMLS_CC);
+		else zend_throw_exception(zend_exception_get_default(TSRMLS_C), "Unknown Error", 0 TSRMLS_CC);
+
+	}
 }
 
 
@@ -126,20 +176,29 @@ PHP_METHOD(ConstCache, get){
 	char *ret;
 	int retLen;
 	c->get_c(std::string(key,(size_t)keyLen),&ret,&retLen);
-	//php_printf("%s\n",ret,retLen);
-	//zval *val;
 
-	php_unserialize_data_t data;
-	PHP_VAR_UNSERIALIZE_INIT(data);
-	const char *endPtr = ret + retLen;
-	//ALLOC_INIT_ZVAL(val);
-	php_var_unserialize(&return_value
-			,(const unsigned char **) &ret
-			,(const unsigned char *) endPtr
-			,&data	TSRMLS_CC
-			);
-	PHP_VAR_UNSERIALIZE_DESTROY(data);
+	if(retLen >0){
+		//pull first character out.
+		char *strData=ret+1;
+		char dataType = ret[0];
+		retLen--;
+		if(dataType=='c'){ //complex type, requires unserlization
+			php_unserialize_data_t data;
+			PHP_VAR_UNSERIALIZE_INIT(data);
+			const char *endPtr = ret + retLen;
+			//ALLOC_INIT_ZVAL(val);
+			php_var_unserialize(&return_value
+					,(const unsigned char **) &strData
+					,(const unsigned char *) endPtr
+					,&data	TSRMLS_CC
+					);
+			PHP_VAR_UNSERIALIZE_DESTROY(data);
+		}
+		else{
+			ZVAL_STRINGL(return_value,strData,retLen,false);
 
+		}
+	}
 
 
 }
