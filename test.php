@@ -5,5 +5,6 @@ $cache=new StatiCache("phpTest.cache",1200);
 //$cache->prepareForWrite();
 //$cache->set("myKey","My value!!!!");
 //$cache->finalize();
-print $cache->get("myKey");
+$key= $cache->get("myKey");
+var_dump($key);
 ?>

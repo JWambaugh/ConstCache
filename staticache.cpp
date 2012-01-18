@@ -126,21 +126,20 @@ PHP_METHOD(StatiCache, get){
 	char *ret;
 	int retLen;
 	c->get_c(std::string(key,(size_t)keyLen),&ret,&retLen);
-	php_printf("%s\n",ret,retLen);
-	zval *val;
+	//php_printf("%s\n",ret,retLen);
+	//zval *val;
 
 	php_unserialize_data_t data;
 	PHP_VAR_UNSERIALIZE_INIT(data);
 	const char *endPtr = ret + retLen;
-	ALLOC_INIT_ZVAL(val);
-	php_var_unserialize(&val
+	//ALLOC_INIT_ZVAL(val);
+	php_var_unserialize(&return_value
 			,(const unsigned char **) &ret
 			,(const unsigned char *) endPtr
 			,&data	TSRMLS_CC
 			);
 	PHP_VAR_UNSERIALIZE_DESTROY(data);
 
-	php_printf("here");
 
 
 }
