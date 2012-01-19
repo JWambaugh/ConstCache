@@ -112,7 +112,7 @@ Here's a full example:
 	
 	if($cache->isWritable()){
 		$cache->prepareForWrite();
-		$cache->set('MyKey',"myValue");
+		$cache->set('myKey',"myValue");
 		$cache->finalize();
 	}
 	
