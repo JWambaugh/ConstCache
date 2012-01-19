@@ -60,11 +60,63 @@ Once you have the extension built and installed, you can create a new ConstCache
 	$cache = new ConstCache('myFile.cache',2000);
 	?>
 Here's the call signature for the constructor:
+
 	ConstCache(string fileName, int cacheSizeBytes)
 The fileName can be any valid path and file. The cacheSizeBytes is the size to which the cache should be initialized in bytes. 
-Be sure to make this large enough to fit all of your data. This size cannot be changed, and reserving more than you need is not a problem, so feel free to reserve more than needed. ConstCache will also use some of this space for its index, so be a little generous.
+Be sure to make this large enough to fit all of your data. This size cannot be changed, and reserving more than you need is not a problem, so feel free to reserve more than needed. ConstCache will also use some of this space for its index, so be a little generous. Be sure to always specify the same cacheByteSize for all ConstCache objects that point to the same file.
+
+Writing to the cache
+--------------------
+If a cache file with the specified name does not already exist, ConstCache will initialize a new one. Set it up for writing using the prepareForWrite() method:
+
+	$cache->prepareForWrite();
+Then, you can write key-value pairs using the set method:
+
+	$cache->set('myKey','myValue');
+Here's the call signature:
+
+	set(string key, mixed value);
+
+Go ahead and set all your data now. You cannot read from the cache until it has been finalized.
+
+Once you are done writing to the cache, finalize it with the finalize() function:
+
+	$cache->finalize();
+
+Cache State
+-----------
+If you create a ConstCache object pointing to a non-existing file, it will create a new cache file and the object will be in its writable state.
+After finalizeing the cache, the cache will enter a readable state. 
+
+If you create a new ConstCache object pointing to an already initialized cache file, the cache object will begin in the readable state.
+
+You can determine the state a cache object is in with the isWritable() and isReadable() methods:
+
+	$cache->isWritable(); //returns true if writable
+or
+
+	$cache->isReadable(); //returns true if readable
 
 
+Reading from Cache
+------------------
+You can get the value of a key with the get() method:
 
+	$value = $cache->get('myKey');
+
+
+Here's a full example:
+
+	<?php
+	$cache = new ConstCache('myFile.cache',2000);
+	
+	if($cache->isWritable()){
+		$cache->prepareForWrite();
+		$cache->set('MyKey',"myValue");
+		$cache->finalize();
+	}
+	
+	echo $cache->get('myKey'); // will output 'myValue'
+	
 
 
