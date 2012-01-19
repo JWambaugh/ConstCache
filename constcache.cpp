@@ -17,7 +17,8 @@ struct cache_object {
 void constcache_free_storage(void *object TSRMLS_DC)
 {
     cache_object *obj = (cache_object *)object;
-    delete obj->cache;
+    if(obj->cache)
+    	delete obj->cache;
 
     zend_hash_destroy(obj->std.properties);
     FREE_HASHTABLE(obj->std.properties);
@@ -80,6 +81,13 @@ PHP_METHOD(ConstCache, __construct){
 
 	}
 
+}
+
+PHP_METHOD(ConstCache, __destruct){
+	zval *me = getThis();
+	cache_object *obj = (cache_object *)zend_object_store_get_object(me TSRMLS_CC);
+	if(obj->cache)
+		delete obj->cache;
 }
 
 
@@ -181,6 +189,7 @@ PHP_METHOD(ConstCache, get){
 		//pull first character out.
 		char *strData=ret+1;
 		char dataType = ret[0];
+		//php_printf("Position: %p\n",strData) ;
 		retLen--;
 		if(dataType=='c'){ //complex type, requires unserlization
 			php_unserialize_data_t data;
@@ -195,7 +204,7 @@ PHP_METHOD(ConstCache, get){
 			PHP_VAR_UNSERIALIZE_DESTROY(data);
 		}
 		else{
-			ZVAL_STRINGL(return_value,strData,retLen,false);
+			ZVAL_STRINGL(return_value,strData,retLen,true);
 
 		}
 	}
