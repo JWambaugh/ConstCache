@@ -26,8 +26,8 @@ In these situations, ConstCache can really shine compared to storing the data in
 
 
 Installation
-------------
-ConstCache is a PHP extension. You will need a working PHP development environment to build the extension.
+============
+ConstCache is a PHP extension. You will need a working PHP development environment to build the extension. To build it, do the following:
 
 1.	Get ConstCache - 
 
@@ -44,4 +44,27 @@ ConstCache is a PHP extension. You will need a working PHP development environme
 5.	Compile and install
 
 		sudo make install
+6.	Then add the following to your php.ini file:
+
+		extension=constcache.so
+7.	Then restart your web server if applicable. 
+
+
+
+Usage
+=====
+
+Once you have the extension built and installed, you can create a new ConstCache object like so:
+
+	<?php
+	$cache = new ConstCache('myFile.cache',2000);
+	?>
+Here's the call signature for the constructor:
+	ConstCache(string fileName, int cacheSizeBytes)
+The fileName can be any valid path and file. The cacheSizeBytes is the size to which the cache should be initialized in bytes. 
+Be sure to make this large enough to fit all of your data. This size cannot be changed, and reserving more than you need is not a problem, so feel free to reserve more than needed. ConstCache will also use some of this space for its index, so be a little generous.
+
+
+
+
 
