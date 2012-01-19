@@ -5,11 +5,12 @@ ConstCache is an extremely fast, reliable caching system for PHP. It is highly s
 
 
 What do you mean read-only?
-===========================
+---------------------------
 By read-only, i mean that once you have finalized a ConstCache cache file, it cannot be written to again. And
 
+
 Why are ConstCache's caches read-only?
-======================================
+--------------------------------------
 
 
 What use is a Read-Only cache?
