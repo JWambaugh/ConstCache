@@ -44,7 +44,6 @@ private:
 	std::string getEntryData(char *entryLoc);
 	char getEntryStatus(char *entryLoc);
 	int getSizeOfEntry(char *entryLoc);
-	int getEntryCount();
 	void setEntryCount(int);
 	int getEntryData_c(char *entryLoc, char **string, int *length);
 	unsigned int writeEntry(mmCacheEntry &entry );
@@ -67,6 +66,7 @@ private:
 public:
 	mmCache(std::string fileName, int buffSize);
 	~mmCache();
+	int getEntryCount();
 	void setupFile();
 	void complete();
 	int set(std::string key,std::string value);
@@ -76,6 +76,8 @@ public:
 	static int hashIndex(int hash, int max);
 	bool isWritable(){return writable;};
 	bool isReadable(){return readable;};
+	int getIndexSize();
+	int getIndexEntryCount();
 
 };
 

@@ -49,10 +49,10 @@ mmCache::mmCache(std::string fileName, int buffSize){
 mmCache::~mmCache(){
 	 /* Don't forget to free the mmapped memory
 	 */
-	/*if (munmap(map, bufferSize) == -1) {
+	if (munmap(map, bufferSize) == -1) {
 	perror("Error un-mmapping the file");
 	/* Decide here whether to close(fd) and exit() or not. Depends... */
-	//}
+	}
 
 	/* Un-mmaping doesn't close the file, so we still need to do that.
 	 */
@@ -263,7 +263,6 @@ char* mmCache::findEntry(std::string key){
 
 	char *x = map+entryOffset;
 
-	int eCount=getEntryCount();
 	char *end = map+charToInt(endOfDataOffsetPointer);
 	//std::cout<<end-map;
 	//std::cout<<"x-end "<<end-x;
@@ -296,6 +295,26 @@ char* mmCache::findEntry(std::string key){
 	}
 	return 0;
 }
+
+
+
+
+int mmCache::getIndexSize(){
+
+	int indexOffset = charToInt(this->indexOffsetPointer);
+	int entriesOffset = charToInt(this->entriesOffsetPointer);
+	return (entriesOffset-indexOffset-8)/sizeof(unsigned int); //there's a padding of 8 bytes between end of index and beginning of entries
+}
+
+
+int mmCache::getIndexEntryCount(){
+	int entriesOffset = charToInt(this->entriesOffsetPointer);
+	int indexOffset = charToInt(this->indexOffsetPointer);
+	for(int x=indexOffset;x<entriesOffset;x+=sizeof(unsigned int)){
+
+	}
+}
+
 
 std::string mmCache::get(std::string key){
 	char * x = findEntry(key);
